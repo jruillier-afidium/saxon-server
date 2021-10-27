@@ -14,6 +14,7 @@ public class ServerOptions {
     private int port = DEFAULT_PORT;
     private File configFile;
     private boolean insecure = false;
+    private String xslRootPath;
     private long transformationTimeoutMs = DEFAULT_TIMEOUT_MS;
     private String logFilePath;
 
@@ -49,6 +50,14 @@ public class ServerOptions {
         this.insecure = insecure;
     }
 
+    public String getXslRootPath() {
+        return xslRootPath;
+    }
+
+    public void setXslRootPath(String xslRootPath) {
+        this.xslRootPath = xslRootPath;
+    }
+
     public static ServerOptions fromArgs(String... args) throws ParseException {
         return fromArgs(System.out, true, args);
     }
@@ -62,6 +71,7 @@ public class ServerOptions {
         options.addOption("h", "help", false, "Display help");
         options.addOption("i", "insecure", false, "Run with Saxon's default (insecure) configuration");
         options.addOption("t", "timeout", true, "The maximum time a transformation is allowed to run in milliseconds.");
+        options.addOption("x", "xslRootPath", true, "Root directory for fetching XSL files");
         options.addOption("o", "output", true, "Write console output to the specified file");
         CommandLineParser p = new DefaultParser();
         CommandLine cmd = p.parse(options, args);
@@ -109,6 +119,10 @@ public class ServerOptions {
             } catch (NumberFormatException e) {
                 throw new ParseException(String.format("Illegal value for timeout parameter. Must be an integer between -1 and %d", Long.MAX_VALUE));
             }
+        }
+
+        if (cmd.hasOption("xslRootPath")) {
+            serverOptions.setXslRootPath(cmd.getOptionValue("xslRootPath"));
         }
 
         if (cmd.hasOption("output")) {

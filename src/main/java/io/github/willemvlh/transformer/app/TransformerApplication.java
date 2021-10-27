@@ -3,11 +3,13 @@ import org.apache.commons.cli.ParseException;
 import org.springframework.boot.Banner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @SpringBootApplication
+@EnableCaching
 class TransformerApplication {
 
     public static void main(String[] args) {
