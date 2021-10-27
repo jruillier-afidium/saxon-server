@@ -6,10 +6,7 @@ import io.github.willemvlh.transformer.saxon.actors.SaxonActor;
 import io.github.willemvlh.transformer.saxon.actors.SaxonActorBuilder;
 import net.sf.saxon.s9api.Processor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -17,11 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.Map;
 import java.util.Optional;
 import java.util.zip.GZIPInputStream;
@@ -39,16 +34,20 @@ class TransformController {
     }
 
     @PostMapping(path = {"/query", "/transform"})
-    public ResponseEntity<byte[]> doTransform(
+    public void doTransform(
             @RequestPart(name = "xml", required = false) Part xml, //use Part instead of MultipartFile so that we can also send strings
             @RequestPart(name = "xsl", required = false) Part xsl,
             @RequestParam(name = "output", required = false) String output,
             @RequestParam(name = "parameters", required = false) String parameters,
-            HttpServletRequest request)
+            HttpServletRequest request,
+            HttpServletResponse response)
             throws Exception {
 
+        // Parse parameters
         Map<String, String> params = new ParameterParser().parseString(parameters);
         Map<String, String> serParams = new ParameterParser().parseString(output);
+
+        // Prepare Saxon transformer
         SaxonActorBuilder builder = getBuilder(request.getRequestURI());
         SaxonActor tf = builder
                 .setProcessor(processor)
@@ -57,23 +56,28 @@ class TransformController {
                 .setSerializationProperties(serParams)
                 .build();
 
+        // Set content type
+        response.setContentType("method=json".equals(output) ? "application/json" : "application/xml");
+
+        // Prepare streams
         Optional<InputStream> xmlStr = Optional.ofNullable(xml).flatMap(this::getInputStream);
         InputStream xslStr = Optional.ofNullable(xsl).flatMap(this::getInputStream)
                 .orElseThrow(() -> new InvalidRequestException("No XSL supplied"));
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        SerializationProps props = xmlStr.isPresent()
-                ? tf.act(new BufferedInputStream(xmlStr.get()), xslStr, os)
-                : tf.act(xslStr, os);
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.valueOf(props.getContentType()));
-        return new ResponseEntity<>(os.toByteArray(), headers, HttpStatus.OK);
+        OutputStream os = new BufferedOutputStream(response.getOutputStream());
+
+        // Run transformation
+        if (xmlStr.isPresent()) {
+            tf.act(new BufferedInputStream(xmlStr.get()), xslStr, os);
+        } else {
+            tf.act(xslStr, os);
+        }
     }
 
     private Optional<InputStream> getInputStream(Part p) {
         try {
             String contentType = p.getContentType();
             if ("application/gzip".equalsIgnoreCase(contentType)) {
-                return Optional.of(getZippedStreamFromPart(p.getInputStream()));
+                return Optional.of(getZippedStreamFromPart(new BufferedInputStream(p.getInputStream())));
             }
             return Optional.ofNullable(p.getInputStream());
         } catch (IOException e) {
