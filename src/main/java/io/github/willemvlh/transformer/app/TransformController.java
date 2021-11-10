@@ -7,6 +7,8 @@ import io.github.willemvlh.transformer.saxon.actors.SaxonActorBuilder;
 import net.sf.saxon.s9api.Processor;
 import net.sf.saxon.s9api.XsltExecutable;
 import net.sf.saxon.s9api.XsltTransformer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,6 +26,8 @@ import java.util.zip.GZIPInputStream;
 
 @RestController
 class TransformController {
+
+    private final Logger logger = LoggerFactory.getLogger(TransformController.class);
 
     private final Processor processor;
     private final ServerOptions options;
@@ -102,15 +106,21 @@ class TransformController {
         // Set content type
         response.setContentType("method=json".equals(output) ? "application/json" : "application/xml");
 
-        // Prepare transformer
-        Processor saxonProcessor = new Processor(false);
+        // Load xsltExecutable
+        final long beforeXsltExecutableMs = System.currentTimeMillis();
         XsltExecutable xsltExecutable = this.xslLoaderService.getXsltExecutableFromFilePath(xslServerPath);
         XsltTransformer xsltTransformer = xsltExecutable.load();
+        logger.info("Loaded xsltExecutable(cacheable)+xsltTransformer in (ms) " + (System.currentTimeMillis() - beforeXsltExecutableMs));
+
+        // Prepare transformer
         xsltTransformer.setSource(new StreamSource(xml.getInputStream()));
+        Processor saxonProcessor = new Processor(false);
         xsltTransformer.setDestination(saxonProcessor.newSerializer(response.getOutputStream()));
 
         // Run transformer
+        final long beforeTransformMs = System.currentTimeMillis();
         xsltTransformer.transform();
+        logger.info("Transformed in (ms) " + (System.currentTimeMillis() - beforeTransformMs));
     }
 
     private Optional<InputStream> getInputStream(Part p) {
