@@ -17,6 +17,7 @@ public class ServerOptions {
     private String xslRootPath;
     private long transformationTimeoutMs = DEFAULT_TIMEOUT_MS;
     private String logFilePath;
+    private long xslCacheMaxItems;
 
     public int getPort() {
         return port;
@@ -58,6 +59,14 @@ public class ServerOptions {
         this.xslRootPath = xslRootPath;
     }
 
+    public long getXslCacheMaxItems() {
+        return xslCacheMaxItems;
+    }
+
+    public void setXslCacheMaxItems(long xslCacheMaxItems) {
+        this.xslCacheMaxItems = xslCacheMaxItems;
+    }
+
     public static ServerOptions fromArgs(String... args) throws ParseException {
         return fromArgs(System.out, true, args);
     }
@@ -72,6 +81,7 @@ public class ServerOptions {
         options.addOption("i", "insecure", false, "Run with Saxon's default (insecure) configuration");
         options.addOption("t", "timeout", true, "The maximum time a transformation is allowed to run in milliseconds.");
         options.addOption("x", "xslRootPath", true, "Root directory for fetching XSL files");
+        options.addOption("m", "xslCacheMaxItems", true, "The maximum items in XSL cache");
         options.addOption("o", "output", true, "Write console output to the specified file");
         CommandLineParser p = new DefaultParser();
         CommandLine cmd = p.parse(options, args);
@@ -123,6 +133,10 @@ public class ServerOptions {
 
         if (cmd.hasOption("xslRootPath")) {
             serverOptions.setXslRootPath(cmd.getOptionValue("xslRootPath"));
+        }
+
+        if (cmd.hasOption("xslCacheMaxItems")) {
+            serverOptions.setXslCacheMaxItems(Long.parseLong(cmd.getOptionValue("xslCacheMaxItems")));
         }
 
         if (cmd.hasOption("output")) {
