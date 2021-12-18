@@ -21,14 +21,18 @@ public class CaffeineCacheConfig {
     @Bean
     public CacheManager cacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager("xsl");
-        cacheManager.setCaffeine(caffeineCacheBuilder());
+        cacheManager.setCaffeine(this.caffeineCacheBuilder());
         return cacheManager;
     }
 
     Caffeine <Object, Object> caffeineCacheBuilder() {
-        return Caffeine.newBuilder()
-                .maximumSize(serverOptions.getXslCacheMaxItems())
+        Caffeine<Object, Object> cacheBuilder = Caffeine.newBuilder()
+                .softValues()
                 .recordStats();
+        if (serverOptions.getXslCacheMaxItems() != null) {
+            cacheBuilder.maximumSize(serverOptions.getXslCacheMaxItems());
+        }
+        return cacheBuilder;
     }
 
 }
