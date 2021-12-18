@@ -1,12 +1,11 @@
 package io.github.willemvlh.transformer.app;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.willemvlh.transformer.app.xslloader.XslLoaderService;
 import io.github.willemvlh.transformer.saxon.actors.ActorType;
 import io.github.willemvlh.transformer.saxon.actors.SaxonActor;
 import io.github.willemvlh.transformer.saxon.actors.SaxonActorBuilder;
-import net.sf.saxon.s9api.Processor;
-import net.sf.saxon.s9api.XsltExecutable;
-import net.sf.saxon.s9api.XsltTransformer;
+import net.sf.saxon.s9api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,23 +84,14 @@ class TransformController {
             @RequestParam(name = "xslServerPath") String xslServerPath,
             @RequestPart(name = "xml") Part xml, //use Part instead of MultipartFile so that we can also send strings
             @RequestParam(name = "output", required = false) String output,
-            @RequestParam(name = "parameters", required = false) String parameters,
+            @RequestParam(name = "parameters", required = false) String parametersStr,
             HttpServletRequest request,
             HttpServletResponse response)
             throws Exception {
 
-        // Parse parameters
-        Map<String, String> params = new ParameterParser().parseString(parameters);
-        Map<String, String> serParams = new ParameterParser().parseString(output);
-
-        // Prepare Saxon transformer
-        SaxonActorBuilder builder = getBuilder(request.getRequestURI());
-        SaxonActor tf = builder
-                .setProcessor(processor)
-                .setTimeout(options.getTransformationTimeoutMs())
-                .setParameters(params)
-                .setSerializationProperties(serParams)
-                .build();
+        Map<String, Object> parameters = parametersStr != null ?
+                new ObjectMapper().readValue(parametersStr, Map.class) :
+                null;
 
         // Set content type
         response.setContentType("method=json".equals(output) ? "application/json" : "application/xml");
@@ -116,6 +106,10 @@ class TransformController {
         xsltTransformer.setSource(new StreamSource(xml.getInputStream()));
         Processor saxonProcessor = new Processor(false);
         xsltTransformer.setDestination(saxonProcessor.newSerializer(response.getOutputStream()));
+        if (parameters != null) {
+            parameters.forEach((key, value) ->
+                    xsltTransformer.setParameter(QName.fromClarkName(key), XdmValue.makeValue(value)));
+        }
 
         // Run transformer
         final long beforeTransformMs = System.currentTimeMillis();
