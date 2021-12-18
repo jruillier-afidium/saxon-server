@@ -17,7 +17,7 @@ public class ServerOptions {
     private String xslRootPath;
     private long transformationTimeoutMs = DEFAULT_TIMEOUT_MS;
     private String logFilePath;
-    private long xslCacheMaxItems;
+    private Long xslCacheMaxItems;
 
     public int getPort() {
         return port;
@@ -59,11 +59,11 @@ public class ServerOptions {
         this.xslRootPath = xslRootPath;
     }
 
-    public long getXslCacheMaxItems() {
+    public Long getXslCacheMaxItems() {
         return xslCacheMaxItems;
     }
 
-    public void setXslCacheMaxItems(long xslCacheMaxItems) {
+    public void setXslCacheMaxItems(Long xslCacheMaxItems) {
         this.xslCacheMaxItems = xslCacheMaxItems;
     }
 
