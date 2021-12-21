@@ -28,7 +28,7 @@ public class CachedXslCompilerService {
     @Cacheable("xsl")
     public XsltLoadResult loadCacheableXsltExecutableFromFilePath(String xslServerPath) throws SaxonApiException {
         File xslFile = this.fileLoaderService.getXslFile(xslServerPath);
-        logger.info("Loading XsltExecutable from " + xslFile.getAbsolutePath());
+        logger.info("Compiling XsltExecutable from " + xslFile.getAbsolutePath());
         Processor saxonProcessor = new Processor(false);
         XsltExecutable xsltExecutable = saxonProcessor.newXsltCompiler().compile(new StreamSource(xslFile));
         return new XsltLoadResult(xsltExecutable, xslFile.lastModified());
