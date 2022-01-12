@@ -16,9 +16,11 @@ Following command-line options are available:
 * `-c`, `--config`: Location to Saxon configuration XML file
 * `-h`, `--help`: Display help
 * `-i`, `--insecure`: Run with default (insecure) configuration.
+* `-m`, `--xslCacheMaxItems` : The maximum items in XSL cache.
 * `-o`, `--output <arg>`: Write console output to the specified file
 * `-p`, `--port <arg>`: Port on which the server runs
 * `-t`, `--timeout <arg>`: The maximum time a transformation is allowed to run in milliseconds.
+* `-x`, `--xslRootPath` : Root directory for fetching XSL files.
 * `-v`, `--version`: Display Saxon version info
 
 Transformations can then be invoked by sending an HTTP POST call to the server at the `/transform` or `/query` endpoint,
