@@ -15,3 +15,8 @@ buildNumber.properties
 keystore/
 deploy.bat
 *.log
+.project
+.classpath
+
+# Test directory for xsl
+src/test/resources/io/github/willemvlh/transformer/afidium/
