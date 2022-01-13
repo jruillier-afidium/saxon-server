@@ -17,6 +17,7 @@ deploy.bat
 *.log
 .project
 .classpath
+.settings/
 
 # Test directory for xsl
 src/test/resources/io/github/willemvlh/transformer/afidium/
