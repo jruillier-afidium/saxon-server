@@ -1,5 +1,6 @@
 package io.github.willemvlh.transformer.saxon.actors;
 
+import io.github.willemvlh.transformer.app.xslloader.XslLoaderService;
 import io.github.willemvlh.transformer.saxon.config.SaxonConfigurationFactory;
 import io.github.willemvlh.transformer.saxon.config.SaxonSecureConfigurationFactory;
 import net.sf.saxon.s9api.Processor;
@@ -16,6 +17,7 @@ public abstract class SaxonActorBuilder {
     private Map<String, String> serializationParameters = new HashMap<>();
     private Map<QName, XdmValue> parameters = new HashMap<>();
     private Processor processor;
+    private XslLoaderService xslLoaderService;
     private final SaxonConfigurationFactory configurationFactory = new SaxonSecureConfigurationFactory();
 
     public abstract Class<? extends SaxonActor> getActorClass();
@@ -37,6 +39,7 @@ public abstract class SaxonActorBuilder {
             instance.setTimeout(timeOut);
             instance.setParameters(parameters);
             instance.setSerializationParameters(serializationParameters);
+            instance.setXslLoaderService(xslLoaderService);
             return instance;
         } catch (InstantiationException | IllegalAccessException e) {
             throw new RuntimeException(e);
@@ -59,6 +62,11 @@ public abstract class SaxonActorBuilder {
 
     public SaxonActorBuilder setProcessor(Processor processor) {
         this.processor = processor;
+        return this;
+    }
+
+    public SaxonActorBuilder setXslLoaderService(XslLoaderService xslLoaderService) {
+        this.xslLoaderService = xslLoaderService;
         return this;
     }
 }

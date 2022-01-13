@@ -89,32 +89,48 @@ class TransformController {
             HttpServletResponse response)
             throws Exception {
 
-        Map<String, Object> parameters = parametersStr != null ?
-                new ObjectMapper().readValue(parametersStr, Map.class) :
-                null;
+//        Map<String, Object> parameters = parametersStr != null ?
+//                new ObjectMapper().readValue(parametersStr, Map.class) :
+//                null;
+//
+//        // Set content type
+//        response.setContentType("method=json".equals(output) ? "application/json" : "application/xml");
+//
+//        // Load xsltExecutable
+//        final long beforeXsltExecutableMs = System.currentTimeMillis();
+//        XsltExecutable xsltExecutable = this.xslLoaderService.getXsltExecutableFromFilePath(xslServerPath, newXsltCompiler(p), this.getConfiguration());
+//        XsltTransformer xsltTransformer = xsltExecutable.load();
+//        logger.info("Loaded xsltExecutable(cacheable)+xsltTransformer in (ms) " + (System.currentTimeMillis() - beforeXsltExecutableMs));
+//
+//        // Prepare transformer
+//        xsltTransformer.setSource(new StreamSource(xml.getInputStream()));
+//        Processor saxonProcessor = new Processor(false);
+//        xsltTransformer.setDestination(saxonProcessor.newSerializer(response.getOutputStream()));
+//        if (parameters != null) {
+//            parameters.forEach((key, value) ->
+//                    xsltTransformer.setParameter(QName.fromClarkName(key), XdmValue.makeValue(value)));
+//        }
+//
+//        // Run transformer
+//        final long beforeTransformMs = System.currentTimeMillis();
+//        xsltTransformer.transform();
+//        logger.info("Transformed in (ms) " + (System.currentTimeMillis() - beforeTransformMs));
 
-        // Set content type
-        response.setContentType("method=json".equals(output) ? "application/json" : "application/xml");
+        // Prepare Saxon transformer
+        SaxonActorBuilder builder = getBuilder(request.getRequestURI());
+        SaxonActor tf = builder
+                .setProcessor(processor)
+                .setTimeout(options.getTransformationTimeoutMs())
+                .setXslLoaderService(xslLoaderService)
+//                .setParameters(params)
+//                .setSerializationProperties(serParams)
+                .build();
 
-        // Load xsltExecutable
-        final long beforeXsltExecutableMs = System.currentTimeMillis();
-        XsltExecutable xsltExecutable = this.xslLoaderService.getXsltExecutableFromFilePath(xslServerPath);
-        XsltTransformer xsltTransformer = xsltExecutable.load();
-        logger.info("Loaded xsltExecutable(cacheable)+xsltTransformer in (ms) " + (System.currentTimeMillis() - beforeXsltExecutableMs));
-
-        // Prepare transformer
-        xsltTransformer.setSource(new StreamSource(xml.getInputStream()));
-        Processor saxonProcessor = new Processor(false);
-        xsltTransformer.setDestination(saxonProcessor.newSerializer(response.getOutputStream()));
-        if (parameters != null) {
-            parameters.forEach((key, value) ->
-                    xsltTransformer.setParameter(QName.fromClarkName(key), XdmValue.makeValue(value)));
-        }
-
-        // Run transformer
-        final long beforeTransformMs = System.currentTimeMillis();
-        xsltTransformer.transform();
-        logger.info("Transformed in (ms) " + (System.currentTimeMillis() - beforeTransformMs));
+        tf.act(
+                new BufferedInputStream(xml.getInputStream()),
+                xslServerPath,
+                new BufferedOutputStream(response.getOutputStream())
+        );
     }
 
     private Optional<InputStream> getInputStream(Part p) {

@@ -1,5 +1,6 @@
 package io.github.willemvlh.transformer.saxon.actors;
 
+import io.github.willemvlh.transformer.app.xslloader.XslLoaderService;
 import io.github.willemvlh.transformer.saxon.SaxonMessageListener;
 import io.github.willemvlh.transformer.saxon.SerializationProps;
 import io.github.willemvlh.transformer.saxon.TransformationException;
@@ -14,6 +15,9 @@ import java.util.List;
 public class SaxonTransformer extends SaxonActor {
 
     private final ArrayList<StaticError> errorList = new ArrayList<>();
+
+    private XslLoaderService xslLoaderService;
+
     private Xslt30Transformer transformer;
 
     public List<StaticError> getErrorList() {
@@ -22,7 +26,17 @@ public class SaxonTransformer extends SaxonActor {
 
     @Override
     public SerializationProps act(XdmValue input, InputStream stylesheet, OutputStream output) throws TransformationException {
-        transformer = newTransformer((stylesheet));
+        transformer = newTransformer(stylesheet);
+        return this.doAct(input, output);
+    }
+
+    @Override
+    protected SerializationProps act(XdmValue input, String stylesheetServerPath, OutputStream output) throws TransformationException {
+        transformer = newTransformer(stylesheetServerPath);
+        return this.doAct(input, output);
+    }
+
+    protected SerializationProps doAct(XdmValue input, OutputStream output) throws TransformationException {
         Serializer s = newSerializer(output);
         try {
             transformer.setStylesheetParameters(this.getParameters());
@@ -51,32 +65,64 @@ public class SaxonTransformer extends SaxonActor {
         return s;
     }
 
+    @Override
+    public void setXslLoaderService(XslLoaderService xslLoaderService) {
+        this.xslLoaderService = xslLoaderService;
+    }
+
     private Xslt30Transformer newTransformer(InputStream stylesheet) throws TransformationException {
         Processor p = getProcessor();
-        XsltCompiler c = p.newXsltCompiler();
-        c.setErrorList(this.getErrorList());
+        XsltCompiler c = newXsltCompiler(p);
         try {
             XsltExecutable e = c.compile(newSAXSource(stylesheet));
-            Xslt30Transformer xf = e.load30();
-            xf.setMessageListener(new SaxonMessageListener());
-            return xf;
+            return loadAndPrepareTransformer(e);
         } catch (SaxonApiException e) {
-            if (this.getErrorList().size() > 0) {
-                StaticError error = this.getErrorList().get(0);
-                String message;
-                if (error instanceof XmlProcessingError && ((XmlProcessingError) error).getCause() != null) {
-                    message = ((XmlProcessingError) error).getCause().getMessage();
-                    //will usually contain a parsing error
-                } else {
-                    message = error.getMessage();
-                }
-                if (error.getLocation() != null) {
-                    message = message + " (line " + error.getLineNumber() + ", col " + error.getColumnNumber() + ")";
-                }
-                throw new TransformationException("Compilation error: " + message);
-            }
-            throw new TransformationException(e.getMessage());
+            throw this.processAndGetXslCompilationError(e);
         }
+    }
+
+    private Xslt30Transformer newTransformer(String stylesheetServerPath) throws TransformationException {
+        try {
+            Processor p = getProcessor();
+            XsltExecutable e = this.xslLoaderService.getXsltExecutableFromFilePath(
+                    stylesheetServerPath,
+                    newXsltCompiler(p),
+                    this.configurationFactory
+            );
+            return loadAndPrepareTransformer(e);
+        } catch (SaxonApiException e) {
+            throw this.processAndGetXslCompilationError(e);
+        }
+    }
+
+    private XsltCompiler newXsltCompiler(Processor p) {
+        XsltCompiler c = p.newXsltCompiler();
+        c.setErrorList(this.getErrorList());
+        return c;
+    }
+
+    private Xslt30Transformer loadAndPrepareTransformer(XsltExecutable e) {
+        Xslt30Transformer xf = e.load30();
+        xf.setMessageListener(new SaxonMessageListener());
+        return xf;
+    }
+
+    private TransformationException processAndGetXslCompilationError(SaxonApiException e) {
+        if (this.getErrorList().size() > 0) {
+            StaticError error = this.getErrorList().get(0);
+            String message;
+            if (error instanceof XmlProcessingError && ((XmlProcessingError) error).getCause() != null) {
+                message = ((XmlProcessingError) error).getCause().getMessage();
+                //will usually contain a parsing error
+            } else {
+                message = error.getMessage();
+            }
+            if (error.getLocation() != null) {
+                message = message + " (line " + error.getLineNumber() + ", col " + error.getColumnNumber() + ")";
+            }
+            return new TransformationException("Compilation error: " + message);
+        }
+        return new TransformationException(e.getMessage());
     }
 
 }

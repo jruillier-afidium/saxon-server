@@ -1,5 +1,6 @@
 package io.github.willemvlh.transformer.saxon.actors;
 
+import io.github.willemvlh.transformer.app.xslloader.XslLoaderService;
 import io.github.willemvlh.transformer.saxon.Convert;
 import io.github.willemvlh.transformer.saxon.JsonToXmlTransformer;
 import io.github.willemvlh.transformer.saxon.SerializationProps;
@@ -21,7 +22,7 @@ import java.util.concurrent.*;
 
 public abstract class SaxonActor {
 
-    private SaxonConfigurationFactory configurationFactory = new SaxonSecureConfigurationFactory();
+    protected SaxonConfigurationFactory configurationFactory = new SaxonSecureConfigurationFactory();
     private Configuration configuration;
     private Processor processor;
     private Map<String, String> serializationParameters = new HashMap<>();
@@ -32,16 +33,18 @@ public abstract class SaxonActor {
     }
 
     public SerializationProps act(InputStream input, InputStream stylesheet, OutputStream output) throws TransformationException {
-        XdmItem context;
         try {
-            if (isJsonStream(input)) {
-                JsonToXmlTransformer xf = new JsonToXmlTransformer();
-                context = xf.transform(Convert.toString(input), getProcessor());
-            } else {
-                DocumentBuilder b = getProcessor().newDocumentBuilder();
-                context = b.build(newSAXSource(input));
-            }
+            XdmItem context = buildContext(input);
             return actWithTimeout(context, stylesheet, output);
+        } catch (SaxonApiException | IOException e) {
+            throw new TransformationException(e.getMessage());
+        }
+    }
+
+    public SerializationProps act(InputStream input, String stylesheetServerPath, OutputStream output) throws TransformationException {
+        try {
+            XdmItem context = buildContext(input);
+            return actWithTimeout(context, stylesheetServerPath, output);
         } catch (SaxonApiException | IOException e) {
             throw new TransformationException(e.getMessage());
         }
@@ -53,10 +56,18 @@ public abstract class SaxonActor {
 
     protected abstract SerializationProps act(XdmValue input, InputStream stylesheet, OutputStream output) throws TransformationException;
 
+    protected abstract SerializationProps act(XdmValue input, String stylesheetServerPath, OutputStream output) throws TransformationException;
+
     protected SerializationProps actWithTimeout(XdmValue input, InputStream stylesheet, OutputStream output) throws TransformationException {
+        return this.actWithTimeout(new FutureTask<>(() -> act(input, stylesheet, output)));
+    }
+    protected SerializationProps actWithTimeout(XdmValue input, String stylesheetServerPath, OutputStream output) throws TransformationException {
+        return this.actWithTimeout(new FutureTask<>(() -> act(input, stylesheetServerPath, output)));
+    }
+
+    protected SerializationProps actWithTimeout(FutureTask<SerializationProps> task) throws TransformationException {
         ExecutorService service = new ForkJoinPool();
         try {
-            FutureTask<SerializationProps> task = new FutureTask<>(() -> act(input, stylesheet, output));
             service.submit(task);
             return task.get(this.timeout, TimeUnit.MILLISECONDS);
         } catch (TimeoutException | InterruptedException e) {
@@ -171,4 +182,17 @@ public abstract class SaxonActor {
         this.processor = processor;
     }
 
+    public abstract void setXslLoaderService(XslLoaderService xslLoaderService);
+
+    private XdmItem buildContext(InputStream input) throws TransformationException, SaxonApiException, IOException {
+        XdmItem context;
+        if (isJsonStream(input)) {
+            JsonToXmlTransformer xf = new JsonToXmlTransformer();
+            context = xf.transform(Convert.toString(input), getProcessor());
+        } else {
+            DocumentBuilder b = getProcessor().newDocumentBuilder();
+            context = b.build(newSAXSource(input));
+        }
+        return context;
+    }
 }

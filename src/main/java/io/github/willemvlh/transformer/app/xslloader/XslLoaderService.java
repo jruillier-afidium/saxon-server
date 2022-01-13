@@ -1,6 +1,8 @@
 package io.github.willemvlh.transformer.app.xslloader;
 
+import io.github.willemvlh.transformer.saxon.config.SaxonConfigurationFactory;
 import net.sf.saxon.s9api.SaxonApiException;
+import net.sf.saxon.s9api.XsltCompiler;
 import net.sf.saxon.s9api.XsltExecutable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,8 +35,16 @@ public class XslLoaderService {
         this.xslCompilerService = xslCompilerService;
     }
 
-    public XsltExecutable getXsltExecutableFromFilePath(String xslServerPath) throws SaxonApiException {
-        XsltLoadResult xsltLoadResult = this.xslCompilerService.loadCacheableXsltExecutableFromFilePath(xslServerPath);
+    public XsltExecutable getXsltExecutableFromFilePath(
+            String xslServerPath,
+            XsltCompiler xsltCompiler,
+            SaxonConfigurationFactory configurationFactory) throws SaxonApiException {
+
+        XsltLoadResult xsltLoadResult = this.xslCompilerService.loadCacheableXsltExecutableFromFilePath(
+                xslServerPath,
+                xsltCompiler,
+                configurationFactory
+        );
 
         String currentAttemptDate = this.getCurrentAttemptDate();
         String previousAttemptDate = loadAttempts.put(xslServerPath, currentAttemptDate);
@@ -56,7 +66,10 @@ public class XslLoaderService {
             logger.info("XSL did not change : " + xslServerPath);
         }
 
-        return this.xslCompilerService.loadCacheableXsltExecutableFromFilePath(xslServerPath).xsltExecutable;
+        return this.xslCompilerService.loadCacheableXsltExecutableFromFilePath(
+                xslServerPath,
+                xsltCompiler,
+                configurationFactory).xsltExecutable;
     }
 
     private String getCurrentAttemptDate() {

@@ -1,5 +1,6 @@
 package io.github.willemvlh.transformer.saxon.actors;
 
+import io.github.willemvlh.transformer.app.xslloader.XslLoaderService;
 import io.github.willemvlh.transformer.saxon.SerializationProps;
 import io.github.willemvlh.transformer.saxon.TransformationException;
 import net.sf.saxon.s9api.*;
@@ -20,7 +21,6 @@ public class SaxonXQueryPerformer extends SaxonActor {
 
     @Override
     public SerializationProps act(XdmValue input, InputStream query, OutputStream output) throws TransformationException {
-
         try {
             XQueryEvaluator e = newEvaluator(query);
             if (!input.isEmpty()) {
@@ -30,6 +30,16 @@ public class SaxonXQueryPerformer extends SaxonActor {
         } catch (SaxonApiException e) {
             throw new TransformationException(e.getMessage());
         }
+    }
+
+    @Override
+    protected SerializationProps act(XdmValue input, String stylesheetServerPath, OutputStream output) throws TransformationException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setXslLoaderService(XslLoaderService xslLoaderService) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
